@@ -51,10 +51,10 @@ class Build(Item):
 
 - Group[Any] создает поле по которому будут группироваться предметы в магазине
 - SaleAbility
-- Поля взаимосвязи
+Поля взаимосвязи
  - NeededForPurchase[Item, ...], если будет указан, то можно покупать в магазине
  - ItemConsumption[Item, ...]
-- Поля структур
+Поля структур
  - Price[Numeric | None] для магазинов
  - BuyAbility для магазинов
 
