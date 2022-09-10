@@ -50,6 +50,7 @@ SQL_QUERIES = Iterator[str]
 Field(*, display_in_shop: bool = True,
          display_in_inventory: bool = True,
          unique: bool = False, 
+         not_null: bool = False,
          checks: SQL_QUERIES = MISSING, 
          triggers: SQL_QUERIES = MISSING
 )
