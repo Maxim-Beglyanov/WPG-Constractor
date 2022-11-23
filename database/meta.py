@@ -38,7 +38,7 @@ class MetaTable(type):
         fields = {}
         for key, type_ in cls.__annotations__.items():
             field: Field = attributedict.get(key, Field())
-            field = _field_handle(clsname, field, type_)
+            _field_handle(clsname, field, type_)
             setattr(cls, key, field)
             fields[_clstable(key)] = field
         cls.fields = MappingProxyType(fields)
@@ -60,24 +60,20 @@ def _clstable(clstable: str) -> str:
     return clstable
 
 
-def _field_handle(clsname, field: Field, type_: type | str) -> Field:
-    field.__dict__['type'] = type_
-    data_field = asdict(field)
+def _field_handle(clsname, field: Field, type_: type | str):
+    is_table = _is_table(type_)
+    type_in_iter = _type_iter_table(type_)
+    field.__dict__['type'] = type_in_iter if type_in_iter else type_
 
-    is_table = _is_table(field.type)
-    type_in_iter = _type_iter_table(field.type)
     if is_table or type_in_iter:
-        field.__dict__['type'] = type_in_iter if type_in_iter else type_
         linked_field = _linked_field(clsname, field)
         attitudes = _attitudes_tab_field(field, linked_field) if is_table \
                else _attitudes_iter_field(linked_field)
 
         if len(attitudes) > 1:
-            data_field['attitude'], linked_field.__dict__['attitude'] = attitudes
+            field.__dict__['attitude'], linked_field.__dict__['attitude'] = attitudes
         else:
-            data_field['attitude'] = attitudes[0]
-    
-    return Field(**data_field)
+            field.__dict__['attitude'] = attitudes[0]
 
 def _linked_field(clsname, field: Field) -> Field | None:
     if type(field.type) is str: return 

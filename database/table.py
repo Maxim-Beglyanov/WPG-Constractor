@@ -81,8 +81,11 @@ class Inventory(Table):
     item: Item = Field(unique=True)
     country: Country = Field(unique=True)
 
+    __unique__ = ((country, item),)
+
 async def main():
     await init()
+    print(Inventory.__unique__)
     print(await Inventory.select())
 
 if __name__ == '__main__':
