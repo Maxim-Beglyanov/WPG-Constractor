@@ -25,7 +25,13 @@ class Table(Table):
         where = '\nWHERE '+', '.join(where) if where else ''
         query = f'SELECT {params} FROM {cls.table} '+joins+where
 
-        output = await fetch(query, *kwargs.values()) 
+        values = []
+        for value in kwargs.values():
+            if issubclass(type(value), Iterable):
+                values += list(value)
+            else:
+                values.append(value)
+        output = await fetch(query, *values) 
         return cls._keys_handle(args, keys, output)
     
     @classmethod
@@ -72,7 +78,7 @@ class Table(Table):
     @classmethod
     def _where(cls, kwargs, args, joins) -> set[str]:
         where = set()
-        for name in kwargs.keys():
+        for name, value in kwargs.items():
             field = ''
             for field in cls.fields.keys():
                 if field == name: break
@@ -81,7 +87,12 @@ class Table(Table):
                     break
             else: raise ValueError(f"I can't find field {name}")
             number = len(where)+1
-            where.add(f'{field} = ${number}')
+            if not issubclass(type(value), Iterable):
+                where.add(f'{field} = ${number}')
+            else:
+                where_ = ', '.join(f'${n}' for n in range(number, len(value)+1))
+                where_ = f'({where_})'
+                where.add(f'{field} IN {where_}')
             if name in args: continue
             else:
                 field = field.split('.')[0]
@@ -118,7 +129,7 @@ class Inventory(Table):
 
 async def main():
     await init()
-    print(await Inventory.select('item.name item.price count', country_name='Германия'))
+    print(await Inventory.select('item.name item.price count', country_name=('Германия', 'Россия')))
 
 if __name__ == '__main__':
     asyncio.run(main())
