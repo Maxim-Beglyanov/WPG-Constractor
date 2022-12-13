@@ -1,10 +1,11 @@
 import asyncio
 from collections import defaultdict, namedtuple
 from typing import Any, Iterable
-from typing_extensions import Self
 
 from functions import Row, fetch
-from meta import init, Table, Field, Unique, TablesAttitude as TA
+from meta import Table, Unique
+from fields import Field, TablesAttitude as TA
+from init import init
 
 
 class Table(Table):
@@ -128,7 +129,7 @@ class Inventory(Table):
     item: Item = Field()
     country: Country = Field()
 
-    __constraints__ = (Unique(item, country), )
+    __constraints__ = (Unique(item, country),)
 
 async def main():
     await init(create_tables=True)
