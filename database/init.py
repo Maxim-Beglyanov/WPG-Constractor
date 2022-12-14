@@ -1,17 +1,20 @@
 import asyncio
 from typing import Coroutine
 
+from logger import logger
 from meta import Table
 from fields import Field, Generated, TablesAttitude as TA
 from constraints import constraint
 from functions import init_pool, pool
 
 
+@logger
 async def init(create_tables=False):
     await init_pool()
     if create_tables:
         await _create_tables()
 
+@logger
 async def _create_tables():
     async with pool().acquire() as conn:
         async with conn.transaction():
@@ -32,16 +35,27 @@ async def _create_tables():
                             'SELECT constraint_name AS name FROM information_schema.constraint_table_usage '
                             'WHERE table_name = $1', table.table
                     )
-                    await _alter_table(conn, created_fields, created_constraints, 
-                                       table, processed_tables)
+                    func = _alter_table(conn, created_fields, created_constraints, 
+                                        table, processed_tables)
                 else:
-                    await _create_table(conn, table, processed_tables)
+                    func = _create_table(conn, table, processed_tables)
+                query, precreates, postcreates = await func
+                [await p for p in precreates]
+                await conn.execute(query) if query else ...
+                await asyncio.gather(*postcreates)
                 processed_tables.append(table)
 
-async def _alter_table(conn, created_fields, created_constraints, table, processed_tables): ...
-
 Precreates = Postcreates = list[Coroutine]
-async def _create_table(conn, table: Table, processed_tables: list[Table]):
+@logger
+async def _alter_table(
+        conn, created_fields, created_constraints, table, processed_tables
+) -> tuple[str, Precreates, Postcreates]:
+    return '', [], []
+
+@logger
+async def _create_table(
+        conn, table: Table, processed_tables: list[Table]
+) -> tuple[str, Precreates, Postcreates]:
     constraints, fields = set(), set()
     precreates: Precreates = []
     postcreates: Postcreates = []
@@ -55,10 +69,9 @@ async def _create_table(conn, table: Table, processed_tables: list[Table]):
     constraints = {f'CONSTRAINT {table.table}_{n} {c}' for n, c in constraints}
 
     query = ',\n'.join(fields | constraints)
-    [await p for p in precreates]
-    await conn.execute(f'CREATE TABLE {table.table}('+query+')')
-    await asyncio.gather(*postcreates)
+    return f'CREATE TABLE {table.table}(\n'+query+')', precreates, postcreates
 
+@logger
 def _field_handle(
         conn, table: Table, field: Field, processed_tables: list[Table]
 ) -> tuple[Field, list[constraint], Precreates, Postcreates]:
@@ -73,7 +86,7 @@ def _field_handle(
             precreates.append(conn.execute(
                 f'ALTER TABLE {field.type.table} '
                 f'ADD COLUMN IF NOT EXISTS {field.type.table}_id '
-                'INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY'
+                 'INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY'
             ))
         else:
             field = Field(table.table+'_id', 'INT', generated=Generated())
