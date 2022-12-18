@@ -1,5 +1,5 @@
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Literal
 
 
@@ -61,3 +61,11 @@ class Field:
         field += ' NOT NULL' if self.not_null else ''
 
         return field
+
+    def __sub__(self, other: 'Field'):
+        differences = {}
+        for key in fields(self):
+            key = key.name
+            if getattr(self, key) != getattr(other, key):
+                differences[key] = getattr(self, key)
+        return differences
